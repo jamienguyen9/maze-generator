@@ -28,9 +28,6 @@ public class ImageService {
     private final Map<String, byte[]> imageStorage = new ConcurrentHashMap<>();
     private final Map<String, String> imageMetadata = new ConcurrentHashMap<>();
 
-    // Directory for temporary file storage (room for improvement)
-    private final String UPLOAD_DIR = "uploads/";
-
 
     /**
      * Store and uploaded image and return a unique identifier
