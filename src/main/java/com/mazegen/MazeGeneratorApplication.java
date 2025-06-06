@@ -15,7 +15,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication
 public class MazeGeneratorApplication {
-
 	
 	public static void main(String[] args) {
 		SpringApplication.run(MazeGeneratorApplication.class, args);
@@ -24,5 +23,4 @@ public class MazeGeneratorApplication {
 		System.out.println("Upload endpoint: POST http://localhost:8080/api/maze/upload");
 		System.out.println("Generate Maze endpoint: POST https://localhost:8080/api/maze/generate");
 	}
-
 }

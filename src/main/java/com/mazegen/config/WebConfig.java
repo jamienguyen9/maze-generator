@@ -2,8 +2,8 @@ package com.mazegen.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.*;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
@@ -64,8 +64,8 @@ import org.springframework.lang.Nullable;
                   .useRegisteredExtensionsOnly(false)
                   .defaultContentType(MediaType.APPLICATION_JSON)
                   .mediaType("json", MediaType.APPLICATION_JSON)
-                  .mediaType("xml", MediaType.APPLICATION_JSON)
-                  .mediaType("txt", MediaType.APPLICATION_JSON);
+                  .mediaType("xml", MediaType.APPLICATION_XML)
+                  .mediaType("txt", MediaType.TEXT_PLAIN);
     }
 
     /**
@@ -84,7 +84,7 @@ import org.springframework.lang.Nullable;
 
         registry.addResourceHandler("/docs/**")
                 .addResourceLocations("classpath:/docs/")
-                .setCachePeriod(86400);
+                .setCachePeriod(86400); // cache for 24 hours
     }
 
     /**
@@ -123,6 +123,7 @@ import org.springframework.lang.Nullable;
         public boolean preHandle(@NonNull jakarta.servlet.http.HttpServletRequest request,
                                 @NonNull jakarta.servlet.http.HttpServletResponse response,
                                 @NonNull Object handler) {
+
             String method = request.getMethod();
             String uri = request.getRequestURI();
             String query = request.getQueryString();
@@ -137,6 +138,7 @@ import org.springframework.lang.Nullable;
         public void afterCompletion(@NonNull jakarta.servlet.http.HttpServletRequest request,
                                     @NonNull jakarta.servlet.http.HttpServletResponse response,
                                     @NonNull Object handler, @Nullable Exception ex) {
+
             int status = response.getStatus();
             String uri = request.getRequestURI();
 
