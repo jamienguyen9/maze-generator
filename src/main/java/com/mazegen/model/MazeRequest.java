@@ -28,6 +28,8 @@ public class MazeRequest {
     @Max(value = 200, message = "Maze height cannot exceed 200")
     private int mazeHeight = 50;
 
+    public MazeRequest () {}
+
     public MazeRequest(String imageId, int mazeWidth, int mazeHeight) {
         this.imageId = imageId;
         this.mazeWidth = mazeWidth;
@@ -61,6 +63,13 @@ public class MazeRequest {
 
     public void setMazeHeight(int mazeHeight) {
         this.mazeHeight = mazeHeight;
+    }
+
+    /**
+     * Validates that the maze dimensions are reasonable
+     */
+    public boolean isValidDimensions() {
+        return mazeWidth >= 10 && mazeWidth <= 200 && mazeHeight >= 10 && mazeHeight <= 200; 
     }
 
     /**
