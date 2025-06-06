@@ -96,15 +96,6 @@ import org.springframework.lang.Nullable;
     }
 
     /**
-     * Configure default servlet handling for serving static content
-     * that doesn't match any specific mapping
-     */
-    @Override
-    public void configureDefaultServletHandling(@NonNull DefaultServletHandlerConfigurer configurer) {
-        configurer.enable();
-    }
-
-    /**
      * Add interceptors for loggin, authentication, or other cross-cutting concerns
      */
     @Override
