@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Configure Maze - Maze Generator</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <!-- Header -->
+        <div class="text-center mb-8 fade-in">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Configure Your Maze</h1>
+            <p class="text-gray-600">Set the dimensions and generate your custom maze</p>
+        </div>
+
+        <div class="max-w-4xl mx-auto grid lg:grid-cols-2 gap-8">
+            
+            <!-- Image Preview -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Uploaded Image</h2>
+                <div class="text-center">
+                    <img th:src="@{'/image/' + ${imageId}}" alt="Uploaded image" 
+                         class="max-w-full max-h-64 mx-auto rounded-lg shadow-md border border-gray-200">
+                    <div class="mt-4 text-sm text-gray-600" th:if="${filename}">
+                        <p><strong>File:</strong> <span th:text="${filename}">filename.jpg</span></p>
+                        <p th:if="${fileSize}"><strong>Size:</strong> <span th:text="${fileSize}">1.2 MB</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">Maze Settings</h2>
+                
+                <form th:action="@{/generate}" method="post" th:object="${mazeRequest}" class="space-y-6">
+                    <input type="hidden" th:field="*{imageId}">
+                    
+                    <!-- Width Setting -->
+                    <div>
+                        <label for="mazeWidth" class="block text-sm font-medium text-gray-700 mb-2">
+                            Maze Width
+                        </label>
+                        <div class="relative">
+                            <input type="range" id="width-slider" th:field="*{mazeWidth}" 
+                                   min="10" max="200" step="5" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="updateWidthValue(this.value)">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>10</span>
+                                <span>200</span>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                <span id="width-value" th:text="*{mazeWidth}">50</span> pixels
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Height Setting -->
+                    <div>
+                        <label for="mazeHeight" class="block text-sm font-medium text-gray-700 mb-2">
+                            Maze Height
+                        </label>
+                        <div class="relative">
+                            <input type="range" id="height-slider" th:field="*{mazeHeight}" 
+                                   min="10" max="200" step="5"
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="updateHeightValue(this.value)">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>10</span>
+                                <span>200</span>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <span id="height-value" th:text="*{mazeHeight}">50</span> pixels
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Maze Info -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-gray-900 mb-2">Maze Information</h3>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">Total Cells:</span>
+                                <span id="total-cells" class="font-medium text-gray-900">2500</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Difficulty:</span>
+                                <span id="difficulty" class="font-medium text-gray-900">Medium</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Size Presets -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Quick Presets</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="setSize(30, 30)" 
+                                    class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                Small (30×30)
+                            </button>
+                            <button type="button" onclick="setSize(50, 50)" 
+                                    class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                Medium (50×50)
+                            </button>
+                            <button type="button" onclick="setSize(80, 60)" 
+                                    class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                Large (80×60)
+                            </button>
+                            <button type="button" onclick="setSize(120, 90)" 
+                                    class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                X-Large (120×90)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="pt-4">
+                        <button type="submit" id="generate-btn"
+                                onclick="showLoading(this)"
+                                class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            Generate Maze
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Back Button -->
+                <div class="mt-4">
+                    <a href="/" class="text-sm text-gray-600 hover:text-blue-600 transition-colors">
+                        ← Back to upload
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function updateWidthValue(value) {
+                document.getElementById('width-value').textContent = value;
+                updateMazeInfo();
+            }
+            
+            function updateHeightValue(value) {
+                document.getElementById('height-value').textContent = value;
+                updateMazeInfo();
+            }
+            
+            function updateMazeInfo() {
+                const width = parseInt(document.getElementById('width-slider').value);
+                const height = parseInt(document.getElementById('height-slider').value);
+                const totalCells = width * height;
+                
+                document.getElementById('total-cells').textContent = totalCells.toLocaleString();
+                
+                // Calculate difficulty
+                let difficulty = 'Easy';
+                if (totalCells > 1000 && totalCells <= 3000) difficulty = 'Medium';
+                else if (totalCells > 3000 && totalCells <= 8000) difficulty = 'Hard';
+                else if (totalCells > 8000) difficulty = 'Expert';
+                
+                document.getElementById('difficulty').textContent = difficulty;
+            }
+            
+            function setSize(width, height) {
+                document.getElementById('width-slider').value = width;
+                document.getElementById('height-slider').value = height;
+                updateWidthValue(width);
+                updateHeightValue(height);
+            }
+            
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                updateMazeInfo();
+            });
+        </script>
+    </div>
+</body>
+</html>
