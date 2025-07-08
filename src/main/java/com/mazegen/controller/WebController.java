@@ -56,20 +56,29 @@ public class WebController {
                                 RedirectAttributes redirectAttributes) {
         
         try {
+            System.out.println("Processing file upload: " + file.getOriginalFilename());
+
             // Validate file
             if (file.isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Please select a file to upload");
                 return "redirect:/";
             }
 
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                redirectAttributes.addFlashAttribute("error", "Please upload a valid image file (JPG, PNG, GIF, BMP).");
+                return "redirect:/";
+            }
+
             // Check file size (10MB limit)
             if (file.getSize() > 10 * 1024 * 1024) {
                 redirectAttributes.addFlashAttribute("error", "File size must be less than 10MB");
-                return "redurect:/";
+                return "redirect:/";
             }
 
             // Store image
             String imageId = imageService.storeImage(file);
+            System.out.println("Image stored with ID: " + imageId);
 
             // Add success message and redirect to configuration
             redirectAttributes.addFlashAttribute("success", "Image uploaded successfully");
@@ -78,7 +87,10 @@ public class WebController {
             redirectAttributes.addFlashAttribute("fileSize", formatFileSize(file.getSize()));
 
             return "redirect:/configure?imageId=" + imageId;
+
         } catch (Exception e) {
+            System.err.println("Upload error: " + e.getMessage());
+            e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Failed to upload image: " + e.getMessage());
             return "redirect:/";
         }
@@ -98,6 +110,8 @@ public class WebController {
      */
     @GetMapping("/configure")
     public String configure(@RequestParam("imageId") String imageId, Model model, RedirectAttributes redirectAttributes) {
+        System.out.println("Configuring maze for image ID: " + imageId);
+        
         // Verify image exists
         if (!imageService.imageExists(imageId)) {
             redirectAttributes.addFlashAttribute("error", "Image not found. Please upload an image first");
@@ -119,18 +133,46 @@ public class WebController {
                                 Model model, RedirectAttributes redirectAttributes) {
         
         try {
+            System.out.println("Starting maze generation for: " + mazeRequest);
+
             // Validate request
             if (!mazeRequest.isValidDimensions()) {
                 redirectAttributes.addFlashAttribute("error", "Invalid maze dimensions. Width and height muse be between 10 and 200");
                 return "redirect:/configure?imageId=" + mazeRequest.getImageId();
             }
 
+            // Check for large mazes and warn user
+            int totalCells = mazeRequest.getTotalCells();
+            if(totalCells > 10000) {
+                System.out.println("Warning: Large mage requested (" + totalCells + " cells");
+            }
+
+            // Set timeout for maze generation
+            long startTime = System.currentTimeMillis();
+
             // Generate maze
-            MazeResponse mazeResponse = mazeService.generateMaze(mazeRequest);
+            MazeResponse mazeResponse;
+            try {
+                mazeResponse = mazeService.generateMaze(mazeRequest);
+            } catch (Exception e) {
+                System.err.println("Maze generation failed: " + e.getMessage());
+                e.printStackTrace();
+                redirectAttributes.addFlashAttribute("error", "Maze generation failed. Try a smaller size or different image");
+                return "redirect:/configure?imageId=" + mazeRequest.getImageId();
+            }
+
+            long endTime = System.currentTimeMillis();
+            System.out.println("Maze generation complated in " + (endTime - startTime) + "ms");
 
             if (!mazeResponse.isSuccess()) {
+                System.err.println("Maze generation unsuccesful: " + mazeResponse.getMessage());
                 redirectAttributes.addFlashAttribute("error", mazeResponse.getMessage());
                 return "redirect:/configure?imageId=" + mazeRequest.getImageId();
+            }
+
+            // Check if maze is too large for web display
+            if (mazeResponse.getMaze().length() > 100000) {
+                System.out.println("Warning: Very large maze generated (" + mazeResponse.getMaze().length() + " characters)");
             }
 
             // Add maze data to model
@@ -152,7 +194,12 @@ public class WebController {
     @GetMapping("/image/{imageId}")
     @ResponseBody
     public byte[] getImage(@PathVariable String imageId) {
-        return imageService.getImage(imageId);
+        try {
+            return imageService.getImage(imageId);
+        } catch (Exception e) {
+            System.err.println("Error retrieving image: " + e.getMessage());
+            return new byte[0];
+        }
     }
 
     /**
@@ -174,6 +221,7 @@ public class WebController {
             return "download";
         
         } catch (Exception e) {
+            System.err.println("Download error: " + e.getMessage());
             model.addAttribute("error", "Failed to generate maze for download");
             return "error";
         }
@@ -185,5 +233,23 @@ public class WebController {
     @GetMapping("/error")
     public String error() {
         return "error";
+    }
+
+    /**
+     * Debug endpoint
+     */
+    @GetMapping("/debug/generate")
+    @ResponseBody
+    public String debugGenerate(@RequestParam String imageId,
+                                @RequestParam(defaultValue = "20") int width,
+                                @RequestParam(defaultValue = "20") int height) {
+        try {
+            System.out.println("Debug generation: " + imageId + " " + width + "x" + height);
+            MazeRequest request = new MazeRequest(imageId, width, height);
+            MazeResponse response = mazeService.generateMaze(request);
+            return "Success: " + response.getMessage(); 
+        } catch (Exception e) {
+            return "Error: " + e.getMessage() + "\nStack: " + java.util.Arrays.toString(e.getStackTrace());
+        }
     }
 }

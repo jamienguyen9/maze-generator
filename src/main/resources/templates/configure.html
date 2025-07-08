@@ -20,7 +20,11 @@
                 <h2 class="text-xl font-semibold text-gray-900 mb-4">Uploaded Image</h2>
                 <div class="text-center">
                     <img th:src="@{'/image/' + ${imageId}}" alt="Uploaded image" 
-                         class="max-w-full max-h-64 mx-auto rounded-lg shadow-md border border-gray-200">
+                         class="max-w-full max-h-64 mx-auto rounded-lg shadow-md border border-gray-200"
+                         onerror="this.style.display='none'; document.getElementById('image-error').style.display='block';">
+                    <div id="image-error" class="hidden text-red-500 p-4">
+                        <p>Failed to load image</p>
+                    </div>
                     <div class="mt-4 text-sm text-gray-600" th:if="${filename}">
                         <p><strong>File:</strong> <span th:text="${filename}">filename.jpg</span></p>
                         <p th:if="${fileSize}"><strong>Size:</strong> <span th:text="${fileSize}">1.2 MB</span></p>
@@ -32,7 +36,7 @@
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h2 class="text-xl font-semibold text-gray-900 mb-6">Maze Settings</h2>
                 
-                <form th:action="@{/generate}" method="post" th:object="${mazeRequest}" class="space-y-6">
+                <form th:action="@{/generate}" method="post" th:object="${mazeRequest}" class="space-y-6" onsubmit="return handleFormSubmit(this)">
                     <input type="hidden" th:field="*{imageId}">
                     
                     <!-- Width Setting -->
@@ -92,6 +96,21 @@
                                 <span id="difficulty" class="font-medium text-gray-900">Medium</span>
                             </div>
                         </div>
+                        <div class="mt-2 text-xs text-gray-500">
+                            <span id="generation-time">Estimated generation time: <span id="time-estimate">2-5 seconds</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Performance Warning -->
+                    <div id="performance-warning" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div class="flex">
+                            <svg class="w-5 h-5 text-yellow-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <p class="ml-3 text-sm text-yellow-700">
+                                <strong>Large maze detected!</strong> This size may take 30+ seconds to generate. Consider using a smaller size for faster results.
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Quick Size Presets -->
@@ -110,9 +129,9 @@
                                     class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                                 Large (80×60)
                             </button>
-                            <button type="button" onclick="setSize(120, 90)" 
+                            <button type="button" onclick="setSize(100, 80)" 
                                     class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                                X-Large (120×90)
+                                X-Large (100×80)
                             </button>
                         </div>
                     </div>
@@ -120,13 +139,30 @@
                     <!-- Generate Button -->
                     <div class="pt-4">
                         <button type="submit" id="generate-btn"
-                                onclick="showLoading(this)"
-                                class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                            </svg>
-                            Generate Maze
+                                class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                            <span id="button-text">
+                                <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                Generate Maze
+                            </span>
+                            <span id="loading-text" class="hidden">
+                                <svg class="w-5 h-5 inline-block mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                                <span id="loading-message">Generating maze...</span>
+                            </span>
                         </button>
+                    </div>
+                    
+                    <!-- Progress indicator -->
+                    <div id="progress-container" class="hidden">
+                        <div class="bg-gray-200 rounded-full h-2">
+                            <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2 text-center">
+                            Please wait, this may take up to <span id="max-time">30</span> seconds for large mazes...
+                        </p>
                     </div>
                 </form>
 
@@ -140,6 +176,8 @@
         </div>
 
         <script>
+            let estimatedTime = 5; // seconds
+            
             function updateWidthValue(value) {
                 document.getElementById('width-value').textContent = value;
                 updateMazeInfo();
@@ -157,13 +195,32 @@
                 
                 document.getElementById('total-cells').textContent = totalCells.toLocaleString();
                 
-                // Calculate difficulty
+                // Calculate difficulty and time estimate
                 let difficulty = 'Easy';
-                if (totalCells > 1000 && totalCells <= 3000) difficulty = 'Medium';
-                else if (totalCells > 3000 && totalCells <= 8000) difficulty = 'Hard';
-                else if (totalCells > 8000) difficulty = 'Expert';
+                estimatedTime = 2;
+                
+                if (totalCells > 1000 && totalCells <= 3000) {
+                    difficulty = 'Medium';
+                    estimatedTime = 5;
+                } else if (totalCells > 3000 && totalCells <= 8000) {
+                    difficulty = 'Hard';
+                    estimatedTime = 15;
+                } else if (totalCells > 8000) {
+                    difficulty = 'Expert';
+                    estimatedTime = 30;
+                }
                 
                 document.getElementById('difficulty').textContent = difficulty;
+                document.getElementById('time-estimate').textContent = estimatedTime + ' seconds';
+                document.getElementById('max-time').textContent = Math.max(estimatedTime, 30);
+                
+                // Show warning for large mazes
+                const warning = document.getElementById('performance-warning');
+                if (totalCells > 8000) {
+                    warning.classList.remove('hidden');
+                } else {
+                    warning.classList.add('hidden');
+                }
             }
             
             function setSize(width, height) {
@@ -171,6 +228,43 @@
                 document.getElementById('height-slider').value = height;
                 updateWidthValue(width);
                 updateHeightValue(height);
+            }
+            
+            function handleFormSubmit(form) {
+                const button = document.getElementById('generate-btn');
+                const buttonText = document.getElementById('button-text');
+                const loadingText = document.getElementById('loading-text');
+                const progressContainer = document.getElementById('progress-container');
+                const progressBar = document.getElementById('progress-bar');
+                
+                // Disable button and show loading state
+                button.disabled = true;
+                buttonText.classList.add('hidden');
+                loadingText.classList.remove('hidden');
+                progressContainer.classList.remove('hidden');
+                
+                // Animate progress bar
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += (100 / (estimatedTime * 10)); // Update every 100ms
+                    if (progress >= 90) progress = 90; // Don't go to 100% until actually done
+                    progressBar.style.width = progress + '%';
+                }, 100);
+                
+                // Set timeout to prevent infinite loading
+                const timeout = setTimeout(() => {
+                    clearInterval(interval);
+                    alert('Maze generation is taking longer than expected. The page will reload to try again.');
+                    window.location.reload();
+                }, Math.max(estimatedTime * 2000, 60000)); // 2x estimated time, minimum 1 minute
+                
+                // Clean up on form submission
+                form.addEventListener('submit', () => {
+                    clearInterval(interval);
+                    clearTimeout(timeout);
+                });
+                
+                return true; // Allow form submission
             }
             
             // Initialize on page load
