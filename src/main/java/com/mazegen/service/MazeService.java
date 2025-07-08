@@ -1,6 +1,7 @@
 package com.mazegen.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.mazegen.model.MazeRequest;
 import com.mazegen.model.MazeResponse;
@@ -31,6 +32,12 @@ public class MazeService {
     private static final char END = 'E';
     private static final char SOLUTION = '.';
 
+    @Value("${maze.max-width:100}")
+    private int maxWidth;
+
+    @Value("${maze.max-height:100}")
+    private int maxHeight;
+
     @Autowired
     public MazeService(ImageService imageService) {
         this.imageService = imageService;
@@ -48,7 +55,7 @@ public class MazeService {
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                maze[y][x] = WALL;
+                Arrays.fill(maze[y], WALL);
             }
         }
         return maze;
@@ -91,10 +98,10 @@ public class MazeService {
         int width = maze[0].length;
 
         // check 8 directions for nearby edges
-        int[] dx = {-1, -1, -1, 0, 0, 1, 1, 1};
-        int[] dy = {-1, 0, 1, -1, 1, -1, 0, 1};
+        int[] dx = {0, 1, 0, -1};
+        int[] dy = {-1, 0, 1, 0};
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 4; i++) {
             int nx = x + dx[i];
             int ny = y + dy[i];
 
@@ -117,13 +124,13 @@ public class MazeService {
         int height = maze.length;
         int width = maze[0].length;
 
-        int additionalPaths = Math.min(50, width * height / 20);
+        int additionalPaths = Math.min(20, width * height / 50);
 
         for (int i = 0; i < additionalPaths; i++) {
             int x = 1 + random.nextInt(width - 2);
             int y = 1 + random.nextInt(height - 2);
 
-            if (maze[y][x] == WALL && random.nextDouble() < 0.3) {
+            if (maze[y][x] == WALL && random.nextDouble() < 0.2) {
                 maze[y][x] = PATH;
             }
         }
@@ -166,7 +173,7 @@ public class MazeService {
         int height = maze.length;
         int width = maze[0].length;
 
-        Queue<Point> queue = new LinkedList<>();
+        Queue<Point> queue = new ArrayDeque<>();
         Map<Point, Point> parent = new HashMap<>();
         Set<Point> visited = new HashSet<>();
 
@@ -176,7 +183,11 @@ public class MazeService {
         int[] dx = {0, 1, 0, -1};
         int[] dy = {-1, 0, 1, 0};
 
-        while (!queue.isEmpty()) {
+        int maxIterations = width * height; // Prevent infinite loop
+        int iterations = 0;
+
+        while (!queue.isEmpty() && iterations < maxIterations) {
+            iterations++;
             Point current = queue.poll();
 
             if (current.equals(end)) {
@@ -198,7 +209,7 @@ public class MazeService {
 
                 if (nx >= 0 && nx < width && ny >= 0 && ny < height && !visited.contains(next) && 
                     (maze[ny][nx] == PATH || maze[ny][nx] == START || maze[ny][nx] == END)) {
-
+                    
                     visited.add(next);
                     parent.put(next, current);
                     queue.offer(next);
@@ -229,12 +240,18 @@ public class MazeService {
      * @return String representation of the maze
      */
     private String mazeToString(char[][] maze) {
-        StringBuilder sb = new StringBuilder();
-        for (char[] row: maze) {
-            for (char cell : row) {
-                sb.append(cell);
+        int height = maze.length;
+        int width = maze[0].length;
+
+        StringBuilder sb = new StringBuilder(height * (width+ 1));
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                sb.append(maze[y][x]);
             }
-            sb.append('\n');
+            if (y < height - 1) {
+                sb.append('\n');
+            }
         }
         return sb.toString();
     }
@@ -286,6 +303,20 @@ public class MazeService {
      */
     public MazeResponse generateMaze(MazeRequest request) {
         try {
+            if (!validateMazeSize(request)) {
+                return MazeResponse.error("Maze size too large. Maximum allowed: " + maxWidth + "x" + maxHeight);
+            }
+
+            System.out.println("Generating maze: " + request.getMazeWidth() + "x" + request.getMazeHeight());
+
+            Runtime runtime = Runtime.getRuntime();
+            long freeMemory = runtime.freeMemory();
+            long estMemory = estimateMemoryUsage(request.getMazeWidth(), request.getMazeHeight());
+
+            if (estMemory > freeMemory * 0.8) {
+                return MazeResponse.error("Not enough memory for maze of this size. Try a smaller dimension");
+            }
+
             // Detect edges int he image
             boolean[][] edges = imageService.detectEdges(
                 request.getImageId(),
@@ -298,6 +329,9 @@ public class MazeService {
 
             // Carve paths based on image eddges
             List<Point> imagePath = carveImagePath(maze, edges);
+
+            edges = null;
+            System.gc();
 
             // Ensure connectivity and add random paths
             ensureConnectivity(maze, imagePath);
@@ -315,15 +349,53 @@ public class MazeService {
             // Convert to string representation
             String mazeString = mazeToString(maze);
 
+            maze = null;
+            System.gc();
+
             // Create metadata response
             Map<String, Object> metadata = createMetadata(request, imagePath.size(), solutionPath.size());
 
             return new MazeResponse(true, "Maze generated successfully", mazeString, metadata);
-
+        } catch (OutOfMemoryError e) {
+            System.err.println("Out of memory error: " + e.getMessage());
+            System.gc();
+            return MazeResponse.error("Out of memory. Please try a smaller size");
         } catch (IOException e) {
             return new MazeResponse(false, "Failed to process image: " + e.getMessage(), null, null);
         } catch (Exception e) {
+            System.err.println("Maze generation error: " + e.getMessage());
+            e.printStackTrace();
             return new MazeResponse(false, "Failed to generate maze: " + e.getMessage(), null, null);
         }
+    }
+
+    /** 
+     * Validate Maze size against configured limits and memory contraints 
+    */
+    private boolean validateMazeSize(MazeRequest request) {
+        int width = request.getMazeWidth();
+        int height = request.getMazeHeight();
+
+        if (width > maxWidth || height > maxHeight) {
+            return false;
+        }
+
+        int totalCells = width * height;
+        if (totalCells > 10000) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Estimate memory usage for a maze of given dimensions
+     */
+    private long estimateMemoryUsage(int width, int height) {
+        long cellsMem = (long) width * height * 2;
+        long edgesMem = (long) width * height;
+        long pathMem = width * height * 24;
+        long strMem = (long) width * height * 2;
+
+        return (cellsMem + edgesMem + pathMem + strMem) * 2;
     }
 }

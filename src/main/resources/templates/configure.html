@@ -46,7 +46,7 @@
                         </label>
                         <div class="relative">
                             <input type="range" id="width-slider" th:field="*{mazeWidth}" 
-                                   min="10" max="200" step="5" 
+                                   min="10" max="80" step="5" 
                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                                    oninput="updateWidthValue(this.value)">
                             <div class="flex justify-between text-xs text-gray-500 mt-1">
@@ -68,7 +68,7 @@
                         </label>
                         <div class="relative">
                             <input type="range" id="height-slider" th:field="*{mazeHeight}" 
-                                   min="10" max="200" step="5"
+                                   min="10" max="80" step="5"
                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                                    oninput="updateHeightValue(this.value)">
                             <div class="flex justify-between text-xs text-gray-500 mt-1">
