@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Error - Maze Generator</title>
+    <style>
+        .error-animation {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .error-icon {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="min-h-96 flex items-center justify-center">
+            <div class="text-center max-w-2xl mx-auto px-4">
+                
+                <!-- Error Icon -->
+                <div class="mb-8 error-animation">
+                    <div class="error-icon w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
+                        <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Error Title -->
+                <h1 class="text-4xl font-bold mb-4 gradient-text">
+                    Oops! Something Went Wrong
+                </h1>
+
+                <!-- Error Message -->
+                <div class="mb-8">
+                    <div th:if="${error}" class="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-red-400 mt-1 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="text-left">
+                                <h3 class="text-sm font-medium text-red-800 mb-1">Error Details:</h3>
+                                <p class="text-sm text-red-700" th:text="${error}">An unexpected error occurred.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:unless="${error}">
+                        <p class="text-xl text-gray-600 mb-4">
+                            We encountered an unexpected error while processing your request.
+                        </p>
+                        <p class="text-gray-500">
+                            This could be due to a temporary issue with our service or an invalid request.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Common Error Scenarios -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-3">Common Issues & Solutions:</h3>
+                    <div class="space-y-3 text-sm text-blue-800">
+                        <div class="flex items-start">
+                            <span class="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                            <div>
+                                <strong>Image Upload Issues:</strong> Make sure your image is in JPG, PNG, GIF, or BMP format and under 10MB
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                            <div>
+                                <strong>Maze Too Large:</strong> Try reducing the maze dimensions to 80x80 or smaller to avoid memory issues
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                            <div>
+                                <strong>Processing Time:</strong> Large mazes may take up to 30 seconds to generate - please be patient
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                            <div>
+                                <strong>Browser Issues:</strong> Try refreshing the page or using a different browser
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-4">
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/" 
+                           class="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v1H8V5z"/>
+                            </svg>
+                            Start Over
+                        </a>
+                        
+                        <button onclick="history.back()" 
+                                class="bg-gray-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                            Go Back
+                        </button>
+                        
+                        <button onclick="window.location.reload()" 
+                                class="bg-green-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            Try Again
+                        </button>
+                    </div>
+
+                    <!-- Additional Help -->
+                    <div class="text-center">
+                        <p class="text-sm text-gray-500 mb-2">Still having issues?</p>
+                        <div class="flex justify-center space-x-4 text-sm">
+                            <a href="/api/health" class="text-blue-600 hover:text-blue-800 transition-colors">
+                                Check Service Status
+                            </a>
+                            <span class="text-gray-300">|</span>
+                            <button onclick="showDebugInfo()" class="text-blue-600 hover:text-blue-800 transition-colors">
+                                Show Debug Info
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debug Information (Hidden by default) -->
+                <div id="debug-info" class="hidden mt-8 bg-gray-50 border border-gray-200 rounded-lg p-4 text-left text-xs">
+                    <h4 class="font-semibold text-gray-900 mb-2">Debug Information:</h4>
+                    <div class="space-y-1 text-gray-600 font-mono">
+                        <div>Timestamp: <span id="timestamp"></span></div>
+                        <div>User Agent: <span id="user-agent"></span></div>
+                        <div>URL: <span id="current-url"></span></div>
+                        <div>Referrer: <span id="referrer"></span></div>
+                        <div th:if="${error}">Error: <span th:text="${error}"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function showDebugInfo() {
+                const debugInfo = document.getElementById('debug-info');
+                const isHidden = debugInfo.classList.contains('hidden');
+                
+                if (isHidden) {
+                    // Populate debug information
+                    document.getElementById('timestamp').textContent = new Date().toISOString();
+                    document.getElementById('user-agent').textContent = navigator.userAgent;
+                    document.getElementById('current-url').textContent = window.location.href;
+                    document.getElementById('referrer').textContent = document.referrer || 'None';
+                    
+                    debugInfo.classList.remove('hidden');
+                } else {
+                    debugInfo.classList.add('hidden');
+                }
+            }
+            
+            // Auto-hide flash messages after 10 seconds
+            setTimeout(() => {
+                const flashMessages = document.querySelectorAll('[th\\:if="${error}"]');
+                flashMessages.forEach(msg => {
+                    if (msg) {
+                        msg.style.transition = 'opacity 0.5s ease-out';
+                        msg.style.opacity = '0.7';
+                    }
+                });
+            }, 10000);
+        </script>
+    </div>
+</body>
+</html>
