@@ -12,20 +12,20 @@ The Image-Based Maze Generator is an innovative web app that bridges computer vi
 - **Puzzle generation** for games and entertainment
 - **Computer vision demonstrations** showing edge detection in action
 
-*** Tech Stack
+## Tech Stack
 
-*** **Backend**
+### **Backend**
 - **Java 21**
 - **Spring Boot 3.4.6**
 - **Spring Web MVC** for RESTful web services and controllers
 - **Sprint Boot Validation** - for input validation and error handling
 
-*** **Frontend**
+### **Frontend**
 - **Thymeleaf** - Server-side template engine
 - **Tailwind CSS**
 - **Vanilla JavaScript**
 
-*** **Build & Deployment**
+### **Build & Deployment**
 - **Maven**
 - **Embedded Tomcat**
 - **Jar Packaging**
@@ -59,7 +59,7 @@ src/main/resources/
     └── error.html                   # Error page
 ```
 
-*** **Design Patterns Used**
+### **Design Patterns Used**
 - **Factory Methods** for object creation utility
 - **Strategy Patten** for edge detection algorithms
 
