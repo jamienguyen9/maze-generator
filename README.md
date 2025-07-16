@@ -61,8 +61,28 @@ src/main/resources/
 
 ### **Design Patterns Used**
 - **Factory Methods** for object creation utility
-- **Strategy Patten** for edge detection algorithms
+- **Strategy Pattern** for edge detection algorithms
 
+## How to run the Application
+
+1. Clone the repository
+    ```bash
+    git clone https://github.com/jamienguyen9/maze-generator.git
+    cd maze-generator
+    ```
+2. Build and compile the project
+    ```bash
+    mvn clean compile
+    ```
+3. Run the application
+    ```bash
+    mvn spring-boot:run
+    ```
+    Or run the main class directly from your IDE.
+4. Access the application
+    ```
+    Web Interface: http://localhost:8080
+    API Health Check: http://localhost:8080/api/health
 
 ## 📄 License
 
