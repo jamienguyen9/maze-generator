@@ -249,6 +249,8 @@ public class MazeService {
             // Find solution path
             List<Point> solutionPath = createEdgeBasedSolutionPath(maze, edges, start, end);
 
+            int edgeCount = countDetectedEdges(edges);
+
             edges = null;
             System.gc();
 
@@ -262,7 +264,7 @@ public class MazeService {
             System.gc();
 
             // Create metadata response
-            Map<String, Object> metadata = createMetadata(request, solutionPath.size(), solutionPath.size());
+            Map<String, Object> metadata = createMetadata(request, edgeCount, solutionPath.size());
 
             return new MazeResponse(true, "Maze generated successfully", mazeString, metadata);
 
@@ -302,6 +304,9 @@ public class MazeService {
         return createEdgeBiasedPath(maze, edges, start, end);
     }
 
+    /**
+     * Find a path that follows detected edges when possible
+     */
     private List<Point> findEdgeGuidedPath(char[][] maze, boolean[][] edges, Point start, Point end) {
         int width = maze[0].length;
         int height = maze.length;
@@ -357,6 +362,9 @@ public class MazeService {
         return new ArrayList<>(); 
     }
 
+    /**
+     * Create a path with bias towards edges if direct path finding fails
+     */
     private List<Point> createEdgeBiasedPath(char[][] maze, boolean[][] edges, Point start, Point end) {
         List<Point> path = new ArrayList<>();
         
@@ -511,6 +519,19 @@ public class MazeService {
         long strMem = (long) width * height * 2;
 
         return (cellsMem + edgesMem + pathMem + strMem) * 2;
+    }
+
+    /**
+     * Count the number of directed edge pixels
+     */
+    private int countDetectedEdges(boolean[][] edges) {
+        int count = 0;
+        for (boolean[] row : edges) {
+            for (boolean pixel : row) {
+                if (pixel) count++;
+            }
+        }
+        return count;
     }
 
     /** 
