@@ -153,7 +153,7 @@ public class ImageService {
         // Multi-threshold edge detection
         for (int y = 1; y < targetHeight - 1; y++) {
             for (int x = 1; x < targetWidth - 1; x++) {
-                if (isEdgePixel(resizedImage, x, y)) {
+                if (isEdgePixel(resizedImage, x, y, targetWidth, targetHeight)) {
                     edges[y][x] = true;
                     edgeCount++;
                 }
@@ -225,21 +225,38 @@ public class ImageService {
      * @param y The y-coordinate of the pixel
      * @return Whether the pixel is an edge
      */
-    private boolean isEdgePixel(BufferedImage image, int x, int y) {
-        // Get brightness values for 3x3 neighborhood
-        int topBrightness = getBrightness(image.getRGB(x,  - 1));
-        int bottomBrightness = getBrightness(image.getRGB(x, y + 1));
-        int leftBrightness = getBrightness(image.getRGB( - 1, y));
-        int rightBrightness = getBrightness(image.getRGB(x + 1, y));
+    private boolean isEdgePixel(BufferedImage image, int x, int y, int maxWidth, int maxHeight) {
+        if (x <= 0 || y <= 0 || x >= maxWidth - 1 || y >= maxHeight - 1) {
+            return false;
+        }
 
-        // Sobel edge detection
-        int gx = Math.abs(rightBrightness - leftBrightness);
-        int gy = Math.abs(bottomBrightness - topBrightness);
-        int gradientMagnitude = gx + gy;
+        if (x  >= image.getWidth() - 1 || y >= image.getHeight() - 1) {
+            return false;
+        }
 
-        int threshold = calculateAdaptiveThreshold(image, x, y);
+        try {
+            // Get brightness values for 3x3 neighborhood
+            int topBrightness = getBrightness(image.getRGB(x, y - 1));
+            int bottomBrightness = getBrightness(image.getRGB(x, y + 1));
+            int leftBrightness = getBrightness(image.getRGB(x - 1, y));
+            int rightBrightness = getBrightness(image.getRGB(x + 1, y));
 
-        return gradientMagnitude > threshold;
+            // Sobel edge detection
+            int gx = Math.abs(rightBrightness - leftBrightness);
+            int gy = Math.abs(bottomBrightness - topBrightness);
+            int gradientMagnitude = gx + gy;
+
+            int threshold = calculateAdaptiveThreshold(image, x, y);
+
+            return gradientMagnitude > threshold;
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.err.println("Bounds error at (" + x + "," + y + ") for image " +
+                                image.getWidth() + "x" + image.getHeight() + "with target " + 
+                                maxWidth + "x" + maxHeight);
+            return false;
+        }
+        
     }
 
     /** 
