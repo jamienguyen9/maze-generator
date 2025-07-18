@@ -315,7 +315,7 @@ public class MazeService {
         
         // Initialize start node
         gScore.put(start, 0.0);
-        openSet.offer(new PathNode(start, 0.0, heuristic(start, end)));
+        openSet.offer(new PathNode(start, heuristic(start, end)));
         
         int[] dx = {0, 1, 0, -1, 1, -1, 1, -1}; // 8 directions
         int[] dy = {-1, 0, 1, 0, -1, -1, 1, 1};
@@ -349,7 +349,7 @@ public class MazeService {
                     cameFrom.put(neighbor, currentPoint);
                     gScore.put(neighbor, tentativeGScore);
                     double fScore = tentativeGScore + heuristic(neighbor, end);
-                    openSet.offer(new PathNode(neighbor, tentativeGScore, fScore));
+                    openSet.offer(new PathNode(neighbor, fScore));
                 }
             }
         }
@@ -518,12 +518,10 @@ public class MazeService {
      */
     private static class PathNode {
         Point point;
-        double gScore;
         double fScore;
 
-        PathNode(Point point, double gScore, double fScore) {
+        PathNode(Point point, double fScore) {
             this.point = point;
-            this.gScore = gScore;
             this.fScore = fScore;
         }
     }
