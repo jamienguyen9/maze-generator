@@ -65,6 +65,12 @@ src/main/resources/
 
 ## How to run the Application
 
+**Prerequisites**
+- Java 21 or higher
+- Maven 3.6+
+- an IDE of your choice (IntelliJ IDEA, Eclipse, or VS Code)
+- a modern web browser (i used Zen browser, a fork of Firefox)
+
 1. Clone the repository
     ```bash
     git clone https://github.com/jamienguyen9/maze-generator.git
