@@ -44,85 +44,6 @@ public class MazeService {
     }
 
     /**
-     * Create initial maze grid filled with walls
-     * 
-     * @param width Maze width
-     * @param height Maze height
-     * @return 2D character array representing the maze
-     */
-    private char[][] createMazeGrid(int width, int height) {
-        char[][] maze = new char[height][width];
-
-        // Fill with walls
-        for (int y = 0; y < height; y++) {
-            Arrays.fill(maze[y], WALL);
-        }
-
-        createMainCorridors(maze, width, height);
-
-        addRandomOpenings(maze, width, height);
-
-        for (int x = 0; x < width; x++) {
-            maze[0][x] = WALL;
-            maze[height - 1][x] = WALL;
-        }
-        for(int y = 0; y < height; y++) {
-            maze[y][0] = WALL;
-            maze[y][width - 1] = WALL;
-        }
-
-        return maze;
-    }
-
-    /**
-     * Create main corridors to ensure path connectivity
-     * 
-     *  @param maze 2D character array representing the maze
-     * @param width width of the maze
-     * @param height height of the maze
-     */
-    private void createMainCorridors(char[][] maze, int width, int height) {
-        int midY = height / 2;
-        for(int x = 1; x < width - 1; x++) {
-            maze[midY][x] = PATH;
-        }
-
-        int midX = width / 2;
-        for(int y = 1; y < height - 1; y++) {
-            maze[y][midX] = PATH;
-        }
-
-        for(int i = 1; i < Math.min(width - 1, height - 1); i ++) {
-            if (i < width - 1 && i < height - 1) {
-                maze[i][i] = PATH;
-            }
-            if (i < width - 1 && (height - 1 - i) > 0) {
-                maze[height - 1 - i][i] = PATH;
-            }
-        }
-    }
-
-    /**
-     * Adds random openings for maze complexity
-     * 
-     * @param maze 2D character array representing the maze
-     * @param width width of the maze
-     * @param height height of the maze
-     */
-    private void addRandomOpenings(char[][] maze, int width, int height) {
-        int openings = Math.min(width * height / 8, 200);
-
-        for (int i = 0; i < openings; i++) {
-            int x = 1 + random.nextInt(width - 2);
-            int y = 1 + random.nextInt(height - 2);
-
-            if (random.nextDouble() < 0.4) {
-                maze[y][x] = PATH;
-            }
-        }
-    }
-
-    /**
      * Mark solution path in the maze
      * 
      * @param maze The maze grid
@@ -133,13 +54,7 @@ public class MazeService {
             if (maze[p.y][p.x] == PATH) {
                 maze[p.y][p.x] = SOLUTION;
             }
-        }
-
-        // Make sure path points are accessible
-        for (Point p : solutionPath) {
-            if (maze[p.y][p.x] == WALL) {
-                maze[p.y][p.x] = SOLUTION;
-            }
+            // Don't overwrite START or END markers
         }
     }
 
@@ -236,9 +151,13 @@ public class MazeService {
                 request.getMazeHeight()
             );
 
+            int edgeCount = countDetectedEdges(edges);
+            System.out.println("Detected " + edgeCount + " edge pixels for guidance");
+
+
 
             // Create maze grid
-            char[][] maze = createMazeGrid(request.getMazeWidth(), request.getMazeHeight());
+            char[][] maze = generateTraditionalMaze(request.getMazeWidth(), request.getMazeHeight());
 
             // Add start and end points
             Point start = new Point(1, 1);
@@ -246,10 +165,18 @@ public class MazeService {
             maze[start.y][start.x] = START;
             maze[end.y][end.x] = END;
 
-            // Find solution path
-            List<Point> solutionPath = createEdgeBasedSolutionPath(maze, edges, start, end);
+            // Ensure start and end are accessible
+            ensurePointAccessible(maze, start);
+            ensurePointAccessible(maze, end);
 
-            int edgeCount = countDetectedEdges(edges);
+            // Find solution path
+            List<Point> solutionPath = findEdgeGuidedSolution(maze, edges, start, end);
+
+            // If no edge-guided solution found, ensure basic connectivity
+            if (solutionPath.isEmpty()) {
+                System.out.println("No edge-guided path found, creating basic solution");
+                solutionPath = ensureBasicSolution(maze, start, end);
+            }
 
             edges = null;
             System.gc();
@@ -281,121 +208,6 @@ public class MazeService {
         }
     }
 
-    /**
-     * Create a path with bias toward edges if direct path finding fails
-     * 
-     * @param maze 2D character representation of the maze
-     * @param edges maze edges
-     * @param start start point of the maze
-     * @param end end point of the maze
-     * @return
-     */
-    private List<Point> createEdgeBasedSolutionPath(char[][] maze, boolean[][] edges, Point start, Point end) {
-        System.out.println("Creating edge-based solution path...");
-
-        List<Point> edgeGuidedPath = findEdgeGuidedPath(maze, edges, start, end);
-
-        if (!edgeGuidedPath.isEmpty()) {
-            System.out.println("Created edge-guided path with " + edgeGuidedPath.size() + " points");
-            return edgeGuidedPath;
-        }
-
-        System.out.println("Creating fallbackpath with edge bias...");
-        return createEdgeBiasedPath(maze, edges, start, end);
-    }
-
-    /**
-     * Find a path that follows detected edges when possible
-     */
-    private List<Point> findEdgeGuidedPath(char[][] maze, boolean[][] edges, Point start, Point end) {
-        int width = maze[0].length;
-        int height = maze.length;
-        
-        // Use A* algorithm with edge preference
-        PriorityQueue<PathNode> openSet = new PriorityQueue<>((a, b) -> 
-            Double.compare(a.fScore, b.fScore));
-        Set<Point> closedSet = new HashSet<>();
-        Map<Point, Point> cameFrom = new HashMap<>();
-        Map<Point, Double> gScore = new HashMap<>();
-        
-        // Initialize start node
-        gScore.put(start, 0.0);
-        openSet.offer(new PathNode(start, heuristic(start, end)));
-        
-        int[] dx = {0, 1, 0, -1, 1, -1, 1, -1}; // 8 directions
-        int[] dy = {-1, 0, 1, 0, -1, -1, 1, 1};
-        
-        while (!openSet.isEmpty()) {
-            PathNode current = openSet.poll();
-            Point currentPoint = current.point;
-            
-            if (currentPoint.equals(end)) {
-                // Reconstruct path
-                return reconstructPath(cameFrom, currentPoint);
-            }
-            
-            closedSet.add(currentPoint);
-            
-            // Explore neighbors
-            for (int i = 0; i < 8; i++) {
-                int nx = currentPoint.x + dx[i];
-                int ny = currentPoint.y + dy[i];
-                Point neighbor = new Point(nx, ny);
-                
-                if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-                if (closedSet.contains(neighbor)) continue;
-                
-                // Calculate cost with edge preference
-                double moveCost = (i < 4) ? 1.0 : 1.414; // Diagonal movement cost
-                double edgeBonus = edges[ny][nx] ? -0.5 : 0; // Prefer edges
-                double tentativeGScore = gScore.getOrDefault(currentPoint, Double.MAX_VALUE) + moveCost + edgeBonus;
-                
-                if (tentativeGScore < gScore.getOrDefault(neighbor, Double.MAX_VALUE)) {
-                    cameFrom.put(neighbor, currentPoint);
-                    gScore.put(neighbor, tentativeGScore);
-                    double fScore = tentativeGScore + heuristic(neighbor, end);
-                    openSet.offer(new PathNode(neighbor, fScore));
-                }
-            }
-        }
-        
-        return new ArrayList<>(); 
-    }
-
-    /**
-     * Create a path with bias towards edges if direct path finding fails
-     */
-    private List<Point> createEdgeBiasedPath(char[][] maze, boolean[][] edges, Point start, Point end) {
-        List<Point> path = new ArrayList<>();
-        
-        // Create a simple path first
-        path.add(start);
-        
-        Point current = start;
-        int maxSteps = (maze[0].length + maze.length) * 2; // Prevent infinite loops
-        int steps = 0;
-        
-        while (!current.equals(end) && steps < maxSteps) {
-            Point next = findNextPointTowardTarget(current, end, edges);
-            
-            // Avoid going back immediately
-            if (path.size() > 1 && next.equals(path.get(path.size() - 2))) {
-                // Try alternative direction
-                next = findAlternativePoint(current, end, edges);
-            }
-            
-            path.add(next);
-            current = next;
-            steps++;
-        }
-        
-        // Ensure we end at the target
-        if (!current.equals(end)) {
-            path.add(end);
-        }
-        
-        return path;
-    }
 
     /**
      * Heuristic function for A* (Manhattan distance).
@@ -403,80 +215,7 @@ public class MazeService {
     private double heuristic(Point a, Point b) {
         return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     }
-
-    /**
-     * Find next point moving toward target with edge preference.
-     */
-    private Point findNextPointTowardTarget(Point current, Point target, boolean[][] edges) {
-        int width = edges[0].length;
-        int height = edges.length;
-        
-        // Calculate direction toward target
-        int dx = Integer.compare(target.x, current.x);
-        int dy = Integer.compare(target.y, current.y);
-        
-        // Try preferred direction with edge bias
-        Point preferred = new Point(current.x + dx, current.y + dy);
-        if (isValidPoint(preferred, width, height)) {
-            return preferred;
-        }
-        
-        // Try adjacent points, preferring edges
-        List<Point> candidates = new ArrayList<>();
-        int[] directions = {0, 1, 0, -1};
-        int[] directionsDy = {-1, 0, 1, 0};
-        
-        for (int i = 0; i < 4; i++) {
-            Point candidate = new Point(current.x + directions[i], current.y + directionsDy[i]);
-            if (isValidPoint(candidate, width, height)) {
-                candidates.add(candidate);
-            }
-        }
-        
-        // Sort by edge preference and distance to target
-        candidates.sort((a, b) -> {
-            boolean aOnEdge = edges[a.y][a.x];
-            boolean bOnEdge = edges[b.y][b.x];
-            
-            if (aOnEdge && !bOnEdge) return -1;
-            if (!aOnEdge && bOnEdge) return 1;
-            
-            // If both or neither on edge, prefer closer to target
-            double distA = Math.sqrt(Math.pow(a.x - target.x, 2) + Math.pow(a.y - target.y, 2));
-            double distB = Math.sqrt(Math.pow(b.x - target.x, 2) + Math.pow(b.y - target.y, 2));
-            return Double.compare(distA, distB);
-        });
-        
-        return candidates.isEmpty() ? current : candidates.get(0);
-    }
     
-    /**
-     * Find alternative point when direct path is blocked.
-     */
-    private Point findAlternativePoint(Point current, Point target, boolean[][] edges) {
-        int width = edges[0].length;
-        int height = edges.length;
-        
-        // Try perpendicular directions
-        int[] dx = {1, -1, 0, 0};
-        int[] dy = {0, 0, 1, -1};
-        
-        for (int i = 0; i < 4; i++) {
-            Point candidate = new Point(current.x + dx[i], current.y + dy[i]);
-            if (isValidPoint(candidate, width, height)) {
-                return candidate;
-            }
-        }
-        
-        return current; // Stay in place if no alternatives
-    }
-    
-    /**
-     * Check if point is within valid bounds.
-     */
-    private boolean isValidPoint(Point p, int width, int height) {
-        return p.x >= 1 && p.x < width - 1 && p.y >= 1 && p.y < height - 1;
-    }
 
     /**
      * Reconstruct path from A* algorithm.
@@ -533,6 +272,302 @@ public class MazeService {
         }
         return count;
     }
+
+    /**
+     * Generate a traditional maze using recursive backtracking algorithm.
+     * This creates a proper maze with dead ends and multiple paths.
+     */
+    private char[][] generateTraditionalMaze(int width, int height) {
+        System.out.println("Creating traditional maze structure...");
+        
+        char[][] maze = new char[height][width];
+        
+        // Initialize with all walls
+        for (int y = 0; y < height; y++) {
+            Arrays.fill(maze[y], WALL);
+        }
+        
+        // Use recursive backtracking to create maze
+        // Start from a random odd position to ensure proper maze structure
+        int startX = 1 + (random.nextInt((width - 2) / 2)) * 2;
+        int startY = 1 + (random.nextInt((height - 2) / 2)) * 2;
+        
+        recursiveBacktrack(maze, startX, startY, width, height);
+        
+        // Add some additional connections to make it less sparse
+        addExtraConnections(maze, width, height);
+        
+        return maze;
+    }
+    
+    /**
+     * Recursive backtracking maze generation algorithm.
+     */
+    private void recursiveBacktrack(char[][] maze, int x, int y, int width, int height) {
+        maze[y][x] = PATH;
+        
+        // Create list of directions (up, right, down, left)
+        List<int[]> directions = Arrays.asList(
+            new int[]{0, -2}, new int[]{2, 0}, new int[]{0, 2}, new int[]{-2, 0}
+        );
+        Collections.shuffle(directions, random);
+        
+        for (int[] dir : directions) {
+            int newX = x + dir[0];
+            int newY = y + dir[1];
+            
+            // Check bounds
+            if (newX > 0 && newX < width - 1 && newY > 0 && newY < height - 1) {
+                // Check if cell hasn't been visited
+                if (maze[newY][newX] == WALL) {
+                    // Carve path between current cell and new cell
+                    maze[y + dir[1] / 2][x + dir[0] / 2] = PATH;
+                    // Recursively visit new cell
+                    recursiveBacktrack(maze, newX, newY, width, height);
+                }
+            }
+        }
+    }
+
+    /**
+     * Add extra connections to make the maze less sparse and more interesting.
+     */
+    private void addExtraConnections(char[][] maze, int width, int height) {
+        int connections = Math.min(width * height / 50, 20);
+        
+        for (int i = 0; i < connections; i++) {
+            int x = 1 + random.nextInt(width - 2);
+            int y = 1 + random.nextInt(height - 2);
+            
+            // Only add connection if it creates interesting branching
+            if (maze[y][x] == WALL && shouldAddConnection(maze, x, y, width, height)) {
+                maze[y][x] = PATH;
+            }
+        }
+    }
+    
+    /**
+     * Check if adding a connection at this point would be beneficial.
+     */
+    private boolean shouldAddConnection(char[][] maze, int x, int y, int width, int height) {
+        int adjacentPaths = 0;
+        int[] dx = {0, 1, 0, -1};
+        int[] dy = {-1, 0, 1, 0};
+        
+        for (int i = 0; i < 4; i++) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
+            
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                if (maze[ny][nx] == PATH) {
+                    adjacentPaths++;
+                }
+            }
+        }
+        
+        // Add connection if it connects different path networks
+        return adjacentPaths >= 2 && adjacentPaths <= 3 && random.nextDouble() < 0.3;
+    }
+
+    /**
+     * Ensure a specific point is accessible by carving paths around it.
+     */
+    private void ensurePointAccessible(char[][] maze, Point point) {
+        maze[point.y][point.x] = PATH;
+        
+        // Ensure at least one adjacent cell is a path
+        int[] dx = {0, 1, 0, -1};
+        int[] dy = {-1, 0, 1, 0};
+        
+        boolean hasAdjacentPath = false;
+        for (int i = 0; i < 4; i++) {
+            int nx = point.x + dx[i];
+            int ny = point.y + dy[i];
+            
+            if (isValidCoordinate(nx, ny, maze[0].length, maze.length)) {
+                if (maze[ny][nx] == PATH) {
+                    hasAdjacentPath = true;
+                    break;
+                }
+            }
+        }
+        
+        // If no adjacent path, create one
+        if (!hasAdjacentPath) {
+            for (int i = 0; i < 4; i++) {
+                int nx = point.x + dx[i];
+                int ny = point.y + dy[i];
+                
+                if (isValidCoordinate(nx, ny, maze[0].length, maze.length)) {
+                    maze[ny][nx] = PATH;
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Find solution path that follows detected edges when possible.
+     */
+    private List<Point> findEdgeGuidedSolution(char[][] maze, boolean[][] edges, Point start, Point end) {
+        System.out.println("Finding edge-guided solution path...");
+        
+        // Use A* with edge preference and maze structure awareness
+        PriorityQueue<PathNode> openSet = new PriorityQueue<>((a, b) -> 
+            Double.compare(a.fScore, b.fScore));
+        Set<Point> closedSet = new HashSet<>();
+        Map<Point, Point> cameFrom = new HashMap<>();
+        Map<Point, Double> gScore = new HashMap<>();
+        
+        gScore.put(start, 0.0);
+        openSet.offer(new PathNode(start, heuristic(start, end)));
+        
+        int[] dx = {0, 1, 0, -1}; // Only 4 directions for cleaner paths
+        int[] dy = {-1, 0, 1, 0};
+        
+        while (!openSet.isEmpty()) {
+            PathNode current = openSet.poll();
+            Point currentPoint = current.point;
+            
+            if (currentPoint.equals(end)) {
+                List<Point> path = reconstructPath(cameFrom, currentPoint);
+                System.out.println("Found edge-guided solution with " + path.size() + " steps");
+                return path;
+            }
+            
+            closedSet.add(currentPoint);
+            
+            for (int i = 0; i < 4; i++) {
+                int nx = currentPoint.x + dx[i];
+                int ny = currentPoint.y + dy[i];
+                Point neighbor = new Point(nx, ny);
+                
+                if (!isValidCoordinate(nx, ny, maze[0].length, maze.length)) continue;
+                if (closedSet.contains(neighbor)) continue;
+                if (maze[ny][nx] == WALL) continue; // Can't move through walls
+                
+                // Calculate movement cost with edge bonus
+                double moveCost = 1.0;
+                double edgeBonus = 0;
+                
+                // Strong preference for edge pixels (cat outline)
+                if (edges[ny][nx]) {
+                    edgeBonus = -0.8; // Significant bonus for following edges
+                }
+                
+                // Small bonus for being near edges
+                else if (isNearEdge(edges, nx, ny)) {
+                    edgeBonus = -0.2;
+                }
+                
+                double tentativeGScore = gScore.getOrDefault(currentPoint, Double.MAX_VALUE) + moveCost + edgeBonus;
+                
+                if (tentativeGScore < gScore.getOrDefault(neighbor, Double.MAX_VALUE)) {
+                    cameFrom.put(neighbor, currentPoint);
+                    gScore.put(neighbor, tentativeGScore);
+                    double fScore = tentativeGScore + heuristic(neighbor, end);
+                    openSet.offer(new PathNode(neighbor, fScore));
+                }
+            }
+        }
+        
+        return new ArrayList<>(); // No path found
+    }
+    
+    /**
+     * Check if a point is near an edge pixel.
+     */
+    private boolean isNearEdge(boolean[][] edges, int x, int y) {
+        int[] dx = {-1, -1, -1, 0, 0, 1, 1, 1};
+        int[] dy = {-1, 0, 1, -1, 1, -1, 0, 1};
+        
+        for (int i = 0; i < 8; i++) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
+            
+            if (isValidCoordinate(nx, ny, edges[0].length, edges.length)) {
+                if (edges[ny][nx]) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Ensure basic solution exists by carving a path if needed.
+     */
+    private List<Point> ensureBasicSolution(char[][] maze, Point start, Point end) {
+        // Use simple BFS to find any path
+        Queue<Point> queue = new LinkedList<>();
+        Set<Point> visited = new HashSet<>();
+        Map<Point, Point> parent = new HashMap<>();
+        
+        queue.offer(start);
+        visited.add(start);
+        
+        int[] dx = {0, 1, 0, -1};
+        int[] dy = {-1, 0, 1, 0};
+        
+        while (!queue.isEmpty()) {
+            Point current = queue.poll();
+            
+            if (current.equals(end)) {
+                return reconstructPath(parent, current);
+            }
+            
+            for (int i = 0; i < 4; i++) {
+                int nx = current.x + dx[i];
+                int ny = current.y + dy[i];
+                Point neighbor = new Point(nx, ny);
+                
+                if (!isValidCoordinate(nx, ny, maze[0].length, maze.length)) continue;
+                if (visited.contains(neighbor)) continue;
+                if (maze[ny][nx] == WALL) {
+                    // Carve through wall if necessary to ensure connectivity
+                    maze[ny][nx] = PATH;
+                }
+                
+                visited.add(neighbor);
+                parent.put(neighbor, current);
+                queue.offer(neighbor);
+            }
+        }
+        
+        // If still no path, create a direct line
+        return createDirectPath(start, end);
+    }
+    
+    /**
+     * Create a direct path between two points.
+     */
+    private List<Point> createDirectPath(Point start, Point end) {
+        List<Point> path = new ArrayList<>();
+        int x = start.x;
+        int y = start.y;
+        
+        path.add(new Point(x, y));
+        
+        while (x != end.x || y != end.y) {
+            if (x < end.x) x++;
+            else if (x > end.x) x--;
+            else if (y < end.y) y++;
+            else if (y > end.y) y--;
+            
+            path.add(new Point(x, y));
+        }
+        
+        return path;
+    }
+    
+    /**
+     * Check if coordinates are valid.
+     */
+    private boolean isValidCoordinate(int x, int y, int width, int height) {
+        return x >= 0 && x < width && y >= 0 && y < height;
+    }
+    
 
     /** 
      * Helper class for A* Pathfinding
