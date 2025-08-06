@@ -1,8 +1,9 @@
 # Image-Based Maze Generator (Scrapped)
 
+**Due to the interest of time, I've decided to not work on this project anymore in favor of learning a new testing framework for future jobs. I have learned a lot from this project, so this experience will greatly help me in my future endeavors**
+
 A Spring Boot Application that aims to transform uploaded images into unique, solvable mazes where the solution path follows the outline of objects detected in the image.
 
-Due to the interest of time, I've decided to not work on this project anymore in favor of learning a new testing framework for future jobs. :(
 
 ### What is it?
 
